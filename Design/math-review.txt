@@ -1,0 +1,46 @@
+Flips math and learning-flow review
+Review method: read-only inspection of App/BitsView.swift, App/Theme.swift,
+App/LogicView.swift, App/BasesView.swift, App/DiscoverView.swift and App/RadixApp.swift.
+The core's earlier executable check passed 12 XCTest cases, including every byte
+in every supported base and every increment carry reconstruction. No tests were
+rerun for the mission wording edit. This document is source review, not UI runtime QA.
+
+Bits and nibble grouping
+- Display order is 7...0, weights 128,64,32,16,8,4,2,1; callbacks use LSB=0.
+- For 42, the lit places sum 32+8+2, binary is 00101010, hex is 2A.
+- The upper nibble 2 contributes 2*16=32; lower nibble A contributes 10.
+- Increment 15 resets bits0...3 and lights bit4, yielding 00010000 / 10 / 16.
+- Increment 255 resets all eight places and the explanatory text correctly says
+  that 256 requires a ninth bit. Decrement zero wraps to 255.
+
+Logic
+- A=170 (10101010), B=204 (11001100): AND=136, OR=238, XOR=102, NOT A=85.
+- The one-bit truth-table rows use a=index/2 and b=index%2, then mask result &1.
+  NOT uses rows 0 and 1 and yields 1 and 0 despite the engine operating on a byte.
+- Shifts operate on the source byte A and replace the switchboard. For 129,
+  left shift yields 2 and right shift yields 64; lost outer bits are described.
+
+Bases
+- The representations and place tiles read from the same RadixNumber.
+- 42 in binary=101010, octal=52, decimal=42, hex=2A. Contributions sum to 42
+  in all four selections; absence of leading zeros does not change the quantity.
+- Carry examples: binary111->1000, octal77->100, decimal99->100,
+  hexadecimal F->10. The carryCount rule selects places 8,64,100,16 respectively.
+- Borrow examples: binary1000->111, octal100->77, decimal100->99,
+  hexadecimal 10->F. The borrowed place drops by 1 and trailing zeros become
+  base-1. Byte boundary transitions are separately handled before these rules.
+- Conversion calls the throwing parser rather than the clamping initializer,
+  so inputs 256 decimal / 100 hex / 100000000 binary fail with the range explanation.
+
+Discover and color
+- Mission success validates the actual toggled answer byte against target.
+- Checking saves unique mission IDs; incorrect answers do not add progress.
+- RGB sliders are integer steps 0...255. RGB(103,224,196) maps to #67E0C4.
+  Two hex digits represent each channel byte; FF and 00 descriptions are correct.
+
+One real learning-flow issue
+- Discover's answer is local state, separate from playground.number. Solving the
+ 127 mission does not put 127 into Bits, but its explanation currently says
+ "Add 1 in Bits". Following that text may increment a different number.
+ Recommended minimal correction: "In Bits, set 127 and add 1..."; alternatively,
+ provide an explicit action to transfer the mission answer to the switchboard.
